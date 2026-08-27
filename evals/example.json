@@ -1,0 +1,56 @@
+{
+  "cases": [
+    {
+      "incident": {
+        "incident_id": "EVAL-DEPLOY-001",
+        "title": "API errors after deployment",
+        "repo_path": ".",
+        "signals": [
+          {
+            "kind": "deployment",
+            "timestamp": "2026-08-27T10:00:00Z",
+            "service": "api",
+            "message": "release v7 deployed",
+            "source": "deployments/api"
+          },
+          {
+            "kind": "log",
+            "timestamp": "2026-08-27T10:04:00Z",
+            "service": "api",
+            "message": "5xx error rate increased",
+            "source": "logs/api"
+          }
+        ]
+      },
+      "expected_hypothesis_terms": ["deployment"],
+      "expected_services": ["api"]
+    },
+    {
+      "incident": {
+        "incident_id": "EVAL-LATENCY-001",
+        "title": "Worker latency spike",
+        "repo_path": ".",
+        "signals": [
+          {
+            "kind": "metric",
+            "timestamp": "2026-08-27T11:00:00Z",
+            "service": "worker",
+            "message": "latency saturation detected",
+            "value": 99,
+            "unit": "percent",
+            "source": "metrics/worker"
+          },
+          {
+            "kind": "log",
+            "timestamp": "2026-08-27T11:02:00Z",
+            "service": "worker",
+            "message": "timeout error processing jobs",
+            "source": "logs/worker"
+          }
+        ]
+      },
+      "expected_hypothesis_terms": ["saturation"],
+      "expected_services": ["worker"]
+    }
+  ]
+}
