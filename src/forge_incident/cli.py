@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 
 from .evaluation import evaluate, load_cases
+from .postmortem import render_markdown
 from .runner import run_fixture
 
 app = typer.Typer(help="ForgeIncident evidence-grounded incident triage CLI")
@@ -44,8 +45,23 @@ def analyze(
     actions.add_column("Action")
     actions.add_column("Verification")
     for step in report.remediation:
-        actions.add_row("human" if step.requires_human_approval else "not required", step.action, step.verification)
+        actions.add_row(
+            "human" if step.requires_human_approval else "not required",
+            step.action,
+            step.verification,
+        )
     console.print(actions)
+
+
+@app.command("postmortem")
+def postmortem(
+    incident_file: Path = typer.Argument(..., exists=True, dir_okay=False),
+    output: Path = typer.Option(Path("postmortem.md"), "--output", "-o"),
+) -> None:
+    """Analyze an incident and write an evidence-linked Markdown postmortem draft."""
+    report = run_fixture(incident_file)
+    output.write_text(render_markdown(report), encoding="utf-8")
+    console.print(f"Wrote [bold]{output}[/bold]")
 
 
 @eval_app.command("run")
