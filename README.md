@@ -8,6 +8,23 @@ ForgeIncident turns operational signals into a structured incident report by cor
 
 > Correlation creates a hypothesis. Evidence earns confidence. Human operators approve risky remediation.
 
+## v0.3 capabilities
+
+- typed Pydantic contracts for signals, events, hypotheses, evidence, remediation, and reports
+- timestamp normalization and deterministic service/time-window correlation
+- deployment/failure and metric/error correlation heuristics
+- ForgeContext repository, runbook, ADR, Git-history, and postmortem retrieval
+- LangGraph multi-stage workflow: normalize -> correlate -> context -> diagnose -> remediate -> report
+- ranked deterministic RCA hypotheses with explicit evidence and falsifiers
+- optional OpenAI diagnostic advisor with structured output
+- **evidence-constrained AI citations**: model hypotheses may cite only numeric evidence IDs supplied by the system
+- safe fallback when no API key/network is available
+- remediation plans with verification steps and explicit human-approval boundaries
+- Markdown postmortem generation for the knowledge feedback loop
+- RCA evaluation: hypothesis hit rate, affected-service recall, evidence coverage
+- sample incidents and labeled evaluation fixtures
+- Ruff + pytest CI across Python 3.11, 3.12, and 3.13
+
 ## Architecture
 
 ```text
@@ -24,14 +41,17 @@ Logs / Metrics / Traces / Alerts / Deployments
                   v                             v
         Correlated timeline             ForgeContext
                                         code/runbooks/
-                                      ADRs/postmortems
+                                   ADRs/Git/postmortems
                   |                             |
                   +-------------+---------------+
                                 v
                          Diagnosis Agent
-                                |
-                   evidence + confidence
-                   + explicit falsifiers
+                     /                    \
+       deterministic hypotheses      optional AI advisor
+                                     evidence IDs only
+                     \                    /
+                      evidence + confidence
+                      + explicit falsifiers
                                 |
                                 v
                        Remediation Agent
@@ -40,18 +60,11 @@ Logs / Metrics / Traces / Alerts / Deployments
                                 |
                                 v
                           Report Agent
+                                |
+                                +--> JSON report
+                                +--> Markdown postmortem
+                                +--> evaluation feedback
 ```
-
-## What it does
-
-- normalizes timestamped operational signals
-- groups related service signals into deterministic time windows
-- detects deployment/failure and metric/error correlations
-- retrieves grounded repository and operational context with ForgeContext
-- produces ranked root-cause hypotheses with evidence and falsifiers
-- proposes remediation with verification steps and human-approval boundaries
-- evaluates RCA quality using hypothesis hit rate, affected-service recall, and evidence coverage
-- runs as a local CLI and in CI across Python 3.11-3.13
 
 ## Quick start
 
@@ -62,8 +75,11 @@ pip install -e '.[dev]'
 
 forge-incident analyze fixtures/deployment_regression.json
 forge-incident analyze fixtures/deployment_regression.json --json
+forge-incident postmortem fixtures/deployment_regression.json -o postmortem.md
 forge-incident eval run evals/example.json
 ```
+
+The deterministic pipeline works without an AI key. To enable optional model enrichment, set `OPENAI_API_KEY` securely. `FORGE_INCIDENT_MODEL` can override the default model. Secrets are read from the environment and are not written into incident reports or ForgeContext indexes.
 
 ## Signal schema
 
@@ -88,27 +104,53 @@ A hypothesis is not just prose. It contains:
 
 That distinction is important: ForgeIncident can identify a deployment that occurred immediately before an outage, but it labels that as correlation until rollback, comparison, or other causal evidence confirms it.
 
+## AI evidence boundary
+
+The optional model advisor never receives permission to invent file paths, dashboards, or log sources. ForgeIncident first builds an evidence catalog from correlated operational signals and ForgeContext citations. The model receives numbered entries such as `[0]`, `[1]`, and `[2]` and may return only those numeric IDs. Unknown IDs are discarded, and a model hypothesis without valid evidence is rejected.
+
+This keeps the LLM in the role of **reasoning over evidence**, not creating the evidence itself.
+
 ## Safety model
 
-ForgeIncident does **not** automatically execute destructive remediation. Rollback, traffic-shift, capacity, or other production-changing actions are returned with `requires_human_approval=true`. The system can automate analysis while keeping operational authority with deterministic controls and human operators.
+ForgeIncident does **not** automatically execute destructive remediation. Rollback, traffic-shift, capacity, or other production-changing actions are returned with `requires_human_approval=true`. The system automates analysis while keeping production authority with human operators and deterministic controls.
+
+## Postmortem feedback loop
+
+```text
+incident signals
+      -> RCA
+      -> mitigation
+      -> Markdown postmortem
+      -> repository/knowledge base
+      -> ForgeContext indexes it
+      -> future incidents retrieve prior evidence
+```
+
+This turns incident response history into reusable operational memory instead of letting every outage start from zero.
 
 ## Evaluation
 
 `forge-incident eval run` reports:
 
-- **Hypothesis hit rate** — whether the expected causal concept appeared in the generated hypotheses
+- **Hypothesis hit rate** — whether an expected causal concept appeared in generated hypotheses
 - **Affected-service recall** — whether known affected services were identified
 - **Evidence coverage** — fraction of hypotheses containing explicit evidence
+
+The labeled fixtures make RCA changes regression-testable rather than judging quality only from demos.
 
 ## Ecosystem
 
 ```text
 ForgeContext -> grounded repository intelligence
      |
-     +--> ForgePR -> pull-request review + CI gates
+     +--> ForgePR -> pull-request review + deterministic CI gates
      |
-     +--> ForgeIncident -> operational triage + RCA
+     +--> ForgeIncident -> incident triage + evidence-backed RCA
 ```
+
+ForgePR asks, "Could this change break the system?"
+ForgeIncident asks, "The system is breaking now — what evidence explains why?"
+Both reuse the same grounded context infrastructure.
 
 ## Development
 
@@ -117,14 +159,13 @@ ruff check src tests
 pytest -q
 ```
 
-## Roadmap
+## Future extensions
 
-- model-backed diagnostic and remediation agents with structured outputs
+- native Prometheus/OpenTelemetry/log-platform adapters
 - trace-span causal ordering and cross-service dependency graphs
-- Prometheus/OpenTelemetry/log-platform adapters
 - incident timeline visualization/API layer
-- postmortem feedback loop and regression evaluation
 - Slack/PagerDuty-style notification integrations
+- historical false-positive and time-to-mitigation dashboards
 
 ## License
 
