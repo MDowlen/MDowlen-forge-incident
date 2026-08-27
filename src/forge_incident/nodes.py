@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .advisor import model_hypotheses
 from .context import OperationalContext
 from .correlation import correlate
 from .diagnosis import diagnose, incident_severity
@@ -35,7 +36,18 @@ def context_agent(state: WorkflowState) -> dict:
 
 
 def diagnosis_agent(state: WorkflowState) -> dict:
-    return {"hypotheses": diagnose(state.correlated_events, state.context_pack)}
+    deterministic = diagnose(state.correlated_events, state.context_pack)
+    advised = model_hypotheses(state.correlated_events, state.context_pack)
+
+    merged = list(deterministic)
+    existing = {item.title.strip().lower() for item in merged}
+    for item in advised:
+        key = item.title.strip().lower()
+        if key not in existing:
+            merged.append(item)
+            existing.add(key)
+    merged.sort(key=lambda item: item.confidence, reverse=True)
+    return {"hypotheses": merged[:8]}
 
 
 def remediation_agent(state: WorkflowState) -> dict:
