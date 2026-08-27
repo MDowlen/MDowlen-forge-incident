@@ -1,0 +1,30 @@
+{
+  "incident_id": "INC-2026-001",
+  "title": "Checkout failures after release",
+  "repo_path": ".",
+  "signals": [
+    {
+      "kind": "deployment",
+      "timestamp": "2026-08-27T16:00:00Z",
+      "service": "checkout-api",
+      "message": "release 2026.08.27.1 deployed",
+      "source": "deployments/checkout-api"
+    },
+    {
+      "kind": "metric",
+      "timestamp": "2026-08-27T16:03:00Z",
+      "service": "checkout-api",
+      "message": "p95 latency increased above 1800ms",
+      "value": 1820,
+      "unit": "ms",
+      "source": "metrics/checkout-api"
+    },
+    {
+      "kind": "log",
+      "timestamp": "2026-08-27T16:05:00Z",
+      "service": "checkout-api",
+      "message": "5xx error rate increased: upstream timeout",
+      "source": "logs/checkout-api"
+    }
+  ]
+}
