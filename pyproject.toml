@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "forge-incident"
-version = "0.3.0"
+version = "0.3.1"
 description = "Evidence-grounded incident triage and root cause analysis workflows"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,11 +13,17 @@ dependencies = [
   "typer>=0.12,<1",
   "rich>=13.7,<15",
   "langgraph>=0.6,<1",
-  "forge-context @ git+https://github.com/MDowlen/forge-context.git@main",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3,<9", "ruff>=0.8,<1"]
+context = [
+  "forge-context @ git+https://github.com/MDowlen/forge-context.git@30a7670355e02b8d1471b924708cbaf0d7094647",
+]
+dev = [
+  "pytest>=8.3,<9",
+  "ruff>=0.8,<1",
+  "forge-context @ git+https://github.com/MDowlen/forge-context.git@30a7670355e02b8d1471b924708cbaf0d7094647",
+]
 
 [project.scripts]
 forge-incident = "forge_incident.cli:app"
