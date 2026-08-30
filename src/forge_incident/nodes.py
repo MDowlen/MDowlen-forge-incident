@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from .advisor import model_hypotheses
-from .context import OperationalContext
 from .correlation import correlate
 from .diagnosis import diagnose, incident_severity
 from .ingestion import incident_window, normalize_signals
@@ -29,9 +28,15 @@ def context_agent(state: WorkflowState) -> dict:
         "and prior incident/postmortem documentation that could explain the observed symptoms."
     )
     try:
+        from .context import OperationalContext
+
         pack = OperationalContext().pack(Path(state.incident.repo_path), question)
     except Exception as exc:
-        pack = {"error": str(exc), "answer": {"confidence": 0.0, "citations": []}}
+        pack = {
+            "error": str(exc),
+            "mode": "signal-only",
+            "answer": {"confidence": 0.0, "citations": []},
+        }
     return {"context_pack": pack}
 
 
